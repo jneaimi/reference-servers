@@ -1,4 +1,5 @@
 # AWS Knowledge Base Retrieval MCP Server
+[![smithery badge](https://smithery.ai/badge/@smithery-ai/aws-kb-retrieval-server)](https://smithery.ai/server/@smithery-ai/aws-kb-retrieval-server)
 
 An MCP server implementation for retrieving information from the AWS Knowledge Base using the Bedrock Agent Runtime.
 
@@ -26,6 +27,13 @@ An MCP server implementation for retrieving information from the AWS Knowledge B
 ### Usage with Claude Desktop
 
 Add this to your `claude_desktop_config.json`:
+### Installing via Smithery
+
+To install AWS Knowledge Base Retrieval for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@smithery-ai/aws-kb-retrieval-server):
+
+```bash
+npx -y @smithery/cli install @smithery-ai/aws-kb-retrieval-server --client claude
+```
 
 #### Docker
 
