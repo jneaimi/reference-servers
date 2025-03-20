@@ -10,6 +10,7 @@ An MCP server implementation that provides a tool for dynamic and reflective pro
 - Branch into alternative paths of reasoning
 - Adjust the total number of thoughts dynamically
 - Generate and verify solution hypotheses
+- HTTP transport by default for easy deployment
 
 ## Tool
 
@@ -39,6 +40,15 @@ The Sequential Thinking tool is designed for:
 - Situations where irrelevant information needs to be filtered out
 
 ## Configuration
+
+### Command Line Options
+
+The server supports the following command line options:
+
+- `--transport, -t`: Transport type (stdio or http, default: http)
+- `--port, -p`: HTTP port to listen on (default: 3000)
+- `--host, -h`: Host to bind to (default: 0.0.0.0)
+- `--help, -?`: Show help
 
 ### Usage with Claude Desktop
 
@@ -84,6 +94,29 @@ Docker:
 
 ```bash
 docker build -t mcp/sequentialthinking -f src/sequentialthinking/Dockerfile .
+```
+
+## Running as HTTP Server
+
+This fork has been modified to run as an HTTP server by default, making it easier to deploy to cloud environments.
+
+```bash
+# Run via npm
+npm start
+
+# Run with custom port
+npm start -- --port 8080
+
+# Run with stdio transport (original behavior)
+npm start -- --transport stdio
+```
+
+## Health Check
+
+A health check endpoint is available at `/health` on port 3001 (port + 1) when running in HTTP mode:
+
+```
+http://localhost:3001/health
 ```
 
 ## License

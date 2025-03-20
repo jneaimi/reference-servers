@@ -2,6 +2,7 @@
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { HttpServerTransport } from "@modelcontextprotocol/sdk/server/http.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
@@ -9,6 +10,33 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 // Fixed chalk import for ESM
 import chalk from 'chalk';
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
+
+// Parse command line arguments
+const argv = yargs(hideBin(process.argv))
+  .option('transport', {
+    alias: 't',
+    description: 'Transport type (stdio or http)',
+    type: 'string',
+    default: 'http',
+    choices: ['stdio', 'http']
+  })
+  .option('port', {
+    alias: 'p',
+    description: 'HTTP port to listen on',
+    type: 'number',
+    default: 3000
+  })
+  .option('host', {
+    alias: 'h',
+    description: 'Host to bind to',
+    type: 'string',
+    default: '0.0.0.0'
+  })
+  .help()
+  .alias('help', '?')
+  .parseSync();
 
 interface ThoughtData {
   thought: string;
@@ -267,9 +295,37 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 async function runServer() {
-  const transport = new StdioServerTransport();
+  let transport;
+  
+  if (argv.transport === 'http') {
+    transport = new HttpServerTransport({
+      port: argv.port,
+      host: argv.host,
+    });
+    console.error(`Sequential Thinking MCP Server running on HTTP at http://${argv.host}:${argv.port}`);
+  } else {
+    transport = new StdioServerTransport();
+    console.error("Sequential Thinking MCP Server running on stdio");
+  }
+  
   await server.connect(transport);
-  console.error("Sequential Thinking MCP Server running on stdio");
+}
+
+// Add a basic health endpoint
+if (argv.transport === 'http') {
+  const http = require('http');
+  const healthServer = http.createServer((req, res) => {
+    if (req.url === '/health') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'ok' }));
+    } else {
+      res.writeHead(404);
+      res.end();
+    }
+  });
+  
+  healthServer.listen(argv.port + 1, argv.host);
+  console.error(`Health endpoint available at http://${argv.host}:${argv.port + 1}/health`);
 }
 
 runServer().catch((error) => {
