@@ -2,16 +2,16 @@
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { HttpServerTransport } from "@modelcontextprotocol/sdk/server/http.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
   Tool,
 } from "@modelcontextprotocol/sdk/types.js";
-// Fixed chalk import for ESM
 import chalk from 'chalk';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
+import express from 'express';
+import http from 'http';
 
 // Parse command line arguments
 const argv = yargs(hideBin(process.argv))
@@ -294,41 +294,68 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   };
 });
 
-async function runServer() {
-  let transport;
-  
-  if (argv.transport === 'http') {
-    transport = new HttpServerTransport({
-      port: argv.port,
-      host: argv.host,
-    });
-    console.error(`Sequential Thinking MCP Server running on HTTP at http://${argv.host}:${argv.port}`);
-  } else {
-    transport = new StdioServerTransport();
-    console.error("Sequential Thinking MCP Server running on stdio");
-  }
-  
+// Function to run server via stdio transport
+async function runStdioServer() {
+  const transport = new StdioServerTransport();
   await server.connect(transport);
+  console.error("Sequential Thinking MCP Server running on stdio");
 }
 
-// Add a basic health endpoint
-if (argv.transport === 'http') {
-  const http = require('http');
-  const healthServer = http.createServer((req, res) => {
-    if (req.url === '/health') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: 'ok' }));
-    } else {
-      res.writeHead(404);
-      res.end();
+// Function to run as HTTP server with Express
+function runHttpServer() {
+  const app = express();
+  const port = argv.port;
+  const host = argv.host;
+
+  // Add middleware to parse JSON
+  app.use(express.json());
+
+  // Health check endpoint
+  app.get('/health', (req, res) => {
+    res.json({ status: 'ok' });
+  });
+
+  // MCP endpoint for listing tools
+  app.post('/mcp/v1/tools', async (req, res) => {
+    const response = await server.handleRequest(ListToolsRequestSchema, {});
+    res.json(response);
+  });
+
+  // MCP endpoint for calling a tool
+  app.post('/mcp/v1/tools/:tool', async (req, res) => {
+    const toolName = req.params.tool;
+    const args = req.body;
+    
+    try {
+      const response = await server.handleRequest(CallToolRequestSchema, {
+        name: toolName,
+        arguments: args
+      });
+      
+      res.json(response);
+    } catch (error) {
+      res.status(400).json({
+        content: [{
+          type: "text",
+          text: error instanceof Error ? error.message : String(error)
+        }],
+        isError: true
+      });
     }
   });
-  
-  healthServer.listen(argv.port + 1, argv.host);
-  console.error(`Health endpoint available at http://${argv.host}:${argv.port + 1}/health`);
+
+  // Start the server
+  app.listen(port, host, () => {
+    console.error(`Sequential Thinking MCP Server running on HTTP at http://${host}:${port}`);
+  });
 }
 
-runServer().catch((error) => {
-  console.error("Fatal error running server:", error);
-  process.exit(1);
-});
+// Main function to start the server based on transport option
+if (argv.transport === 'http') {
+  runHttpServer();
+} else {
+  runStdioServer().catch((error) => {
+    console.error("Fatal error running server:", error);
+    process.exit(1);
+  });
+}
