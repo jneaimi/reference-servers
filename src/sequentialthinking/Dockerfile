@@ -1,31 +1,29 @@
-FROM node:22.12-alpine AS builder
-
-COPY src/sequentialthinking /app
-COPY tsconfig.json /tsconfig.json
+FROM node:18-alpine
 
 WORKDIR /app
 
-RUN --mount=type=cache,target=/root/.npm npm install
+# Copy package.json and package-lock.json files
+COPY src/sequentialthinking/package*.json ./
 
-RUN --mount=type=cache,target=/root/.npm-production npm ci --ignore-scripts --omit-dev
+# Install dependencies
+RUN npm install
 
+# Copy TypeScript configuration files
+COPY tsconfig.json /tsconfig.json
+
+# Copy source code
+COPY src/sequentialthinking/*.ts ./
+
+# Build the application
 RUN npm run build
 
-FROM node:22-alpine AS release
-
-COPY --from=builder /app/dist /app/dist
-COPY --from=builder /app/package.json /app/package.json
-COPY --from=builder /app/package-lock.json /app/package-lock.json
-
+# Set environment variables
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
 
-WORKDIR /app
-
-RUN npm ci --ignore-scripts --omit-dev
-
+# Expose port
 EXPOSE 3000
-EXPOSE 3001
 
-ENTRYPOINT ["node", "dist/index.js", "--transport", "http", "--port", "3000", "--host", "0.0.0.0"]
+# Run the application
+CMD ["node", "dist/index.js", "--transport", "http", "--port", "3000", "--host", "0.0.0.0"]

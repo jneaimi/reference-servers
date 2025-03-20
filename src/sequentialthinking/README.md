@@ -10,7 +10,7 @@ An MCP server implementation that provides a tool for dynamic and reflective pro
 - Branch into alternative paths of reasoning
 - Adjust the total number of thoughts dynamically
 - Generate and verify solution hypotheses
-- HTTP transport by default for easy deployment
+- HTTP server support for easy deployment
 
 ## Tool
 
@@ -49,6 +49,28 @@ The server supports the following command line options:
 - `--port, -p`: HTTP port to listen on (default: 3000)
 - `--host, -h`: Host to bind to (default: 0.0.0.0)
 - `--help, -?`: Show help
+
+### Using with HTTP
+
+You can test the HTTP server with the following curl commands:
+
+```bash
+# Health check
+curl http://localhost:3000/health
+
+# List available tools
+curl -X POST http://localhost:3000/mcp/v1/tools
+
+# Call the sequential_thinking tool
+curl -X POST http://localhost:3000/mcp/v1/tools/sequentialthinking \
+  -H "Content-Type: application/json" \
+  -d '{
+    "thought": "Initial problem analysis",
+    "nextThoughtNeeded": true,
+    "thoughtNumber": 1,
+    "totalThoughts": 5
+  }'
+```
 
 ### Usage with Claude Desktop
 
@@ -111,13 +133,15 @@ npm start -- --port 8080
 npm start -- --transport stdio
 ```
 
-## Health Check
+## Deploying to Coolify
 
-A health check endpoint is available at `/health` on port 3001 (port + 1) when running in HTTP mode:
+To deploy this server to Coolify:
 
-```
-http://localhost:3001/health
-```
+1. Fork this repository
+2. In Coolify, create a new service using this repository
+3. Set the Dockerfile path to `src/sequentialthinking/Dockerfile`
+4. Set the build context to `/` (root directory)
+5. Deploy the application
 
 ## License
 
